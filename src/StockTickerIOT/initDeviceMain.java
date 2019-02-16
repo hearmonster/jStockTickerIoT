@@ -1,6 +1,7 @@
 package StockTickerIOT;
 
 import commons.SampleException;
+import commons.init.CreateArtifacts;
 import commons.utils.Console;
 
 public class initDeviceMain {
@@ -10,7 +11,7 @@ public class initDeviceMain {
 			CreateArtifacts artifacts = new CreateArtifacts();
 		}
 		catch (SampleException e) {
-			Console.printError(String.format("Unable to run the sample - %1$s", e.getMessage()));
+			Console.printError(String.format("Unable to run the create the IoT Core artifacts - %1$s", e.getMessage()));
 			System.exit(1);
 		}
 		
