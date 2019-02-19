@@ -1,189 +1,172 @@
 package commons.init;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.Properties;
+import java.util.ArrayList;
 
-import commons.connectivity.ProxySelector;
-import commons.model.GatewayProtocol;
-import commons.utils.Console;
-import commons.utils.Constants;
-import commons.utils.FileUtil;
+import com.google.gson.Gson;
+import commons.model.Capability;
+import commons.model.Device;
+import commons.model.Property;
+import commons.model.Sensor;
 
 /**
- * An abstraction over all sample applications.
+ * A >>>Device<<<-specific properties implementation of the 'AbstractPropertiesHelper' class
  */
-public class DeviceProperties {
+public class DeviceProperties extends AbstractPropertiesHelper {
 
-	private final String CONFIGURATIONS_FILE_NAME = "sample.properties";
+	//protected static final String propertiesFile = "device.properties";
+	
+	protected static final String DEVICE_ID = "device.id";
+	protected static final String DEVICE_ALT_ID = "device.alt.id";
+	protected static final String SENSOR_ID = "sensor.id";
+	protected static final String SENSOR_ALT_ID = "sensor.alt.id";
+	protected static final String MEASURE_CAPABILITY_ID = "capability.id.measure";
+	protected static final String MEASURE_CAPABILITY_ALT_ID = "capability.alt.id.command";
+	protected static final String COMMAND_CAPABILITY_ID = "capability.id.measure";
+	protected static final String COMMAND_CAPABILITY_ALT_ID = "capability.alt.id.command";
+	protected static final String SENSOR_TYPE_ID = "sensor.type.id";
+	protected static final String KEYSTORE_SECRET = "keystore.secret";
+	protected static final String MEASURE_CAPABILITY_PROPERTIES = "measure.capability.properties";
 
-	public final String IOT_HOST = "iot.host";
-	public final String INSTANCE_ID = "instance.id";
-	public final String TENANT_ID = "tenant.id";
-	public final String IOT_USER = "iot.user";
-	public final String IOT_PASSWORD = "iot.password";
-	public final String DEVICE_ID = "device.id";
-	public final String SENSOR_ID = "sensor.id";
-	public final String SENSOR_TYPE_ID = "sensor.type.id";
-	public final String CAPABILITY_ID = "capability.id";
-	public final String GATEWAY_PROTOCOL_ID = "gateway.protocol.id";
-	public final String PROXY_PORT = "proxy.port";
-	public final String PROXY_HOST = "proxy.host";
 
-	protected Properties properties;
+	public DeviceProperties( String propertiesFile ) {
+		//propertiesFile is specific to device #  e.g. "device_01.properties";
+		super( propertiesFile );
+		HIDDEN_KEYS.add( "IOT_PASSWORD" );
+		
+		KEYS = new ArrayList<String[]>();
 
-	public DeviceProperties() {
-		init();
+		KEYS.add(new String[] {"DEVICE_ID",			"device.id",	  "OPTIONAL",	"Device ID (e.g. '32' or leave empty): "	});
+		KEYS.add(new String[] {"SENSOR_ID",			"sensor.id",	  "OPTIONAL",	"Sensor ID (e.g. '32' or leave empty): "	});
+		KEYS.add(new String[] {"SENSOR_TYPE_ID",	"sensor.type.id", "OPTIONAL",	"Sensor Type ID (e.g. '32' or leave empty): "	});
+		KEYS.add(new String[] {"CAPABILITY_ID",		"capability.id",  "OPTIONAL",	"Capability ID (e.g. '32' or leave empty): "	});
+
+		//promptProperties();	//will fill in any missing mandatory values
+		printProperties();	
+}
+
+	// GETTERS
+	public String getDeviceId() {
+		return properties.getProperty( DEVICE_ID );
+	}
+
+	public String getDeviceAltId() {
+		return properties.getProperty( DEVICE_ALT_ID);
+	}
+
+	public String getSensorId() {
+		return properties.getProperty( SENSOR_ID);
+	}
+
+	public String getSensorAltId() {
+		return properties.getProperty( SENSOR_ALT_ID);
+	}
+
+	public String getSensorTypeId() {
+		return properties.getProperty( SENSOR_TYPE_ID );
+	}
+
+	public String getMeasureCapabilityId() {
+		return properties.getProperty( MEASURE_CAPABILITY_ID );
+	}
+
+	public String getMeasureCapabilityAltId() {
+		return properties.getProperty( MEASURE_CAPABILITY_ALT_ID );
+	}
+
+	public String getCommandCapabilityId() {
+		return properties.getProperty( COMMAND_CAPABILITY_ID );
+	}
+
+	public String getCommandCapabilityAltId() {
+		return properties.getProperty( COMMAND_CAPABILITY_ALT_ID );
+	}
+
+	public String getKeystoreSecret() {
+		return properties.getProperty( KEYSTORE_SECRET );
 	}
 
 
-
-
-	/**
-	 * Reads the configuration properties from the file located in the same directory to JAR archive. Sticks to the
-	 * empty properties collection if the configuration file does not exist.
-	 */
-	private void init() {
-		File jar = new File(DeviceProperties.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-		String path = jar.getParentFile().getAbsolutePath().concat(System.getProperty("file.separator"))
-			.concat(CONFIGURATIONS_FILE_NAME);
-		Console.printText("Looking for properties in: " + path);
-		try {
-			path = URLDecoder.decode(path, Constants.DEFAULT_ENCODING.name());
-		} catch (UnsupportedEncodingException e) {
-			Console.printWarning("Unable to decode config file path.");
-		}
-		File config = new File(path);
-
-		properties = new Properties();
-
-		try {
-			if (config.exists()) {
-				properties = FileUtil.readProperties(new FileInputStream(config));
-			}
-		} catch (IOException e) {
-			// do nothing
-		} finally {
-			promptProperties();
-			printProperties();
-		}
-
-		setProxy();
+	// SETTERS
+	public void setDeviceId( String deviceId ) {
+		properties.setProperty( DEVICE_ID, deviceId ) ;
 	}
 
-	/**
-	 * Prompts the user for missing configuration properties.
-	 */
-	protected void promptProperties() {
-		Console console = Console.getInstance();
+	public void setDeviceAltId( String deviceAltId ) {
+		properties.setProperty( DEVICE_ALT_ID, deviceAltId ) ;
+	}
 
-		String host = properties.getProperty(IOT_HOST);
-		host = console.awaitNextLine(host, "Hostname (e.g. 'trial.eu10.cp.iot.sap'): ");
-		properties.setProperty(IOT_HOST, host);
+	public void setSensorId( String sensorId ) {
+		properties.setProperty( SENSOR_ID, sensorId );
+	}
 
-		String instance = properties.getProperty(INSTANCE_ID);
-		instance = console.awaitNextLine(instance, "Instance ID (e.g. 'demo'): ");
-		properties.setProperty(INSTANCE_ID, instance);
+	public void setSensorAltId( String sensorAltId ) {
+		properties.setProperty( SENSOR_ALT_ID, sensorAltId );
+	}
 
-		String tenant = properties.getProperty(TENANT_ID);
-		tenant = console.awaitNextLine(tenant, "Tenant ID (e.g. '0123456789'): ");
-		properties.setProperty(TENANT_ID, tenant);
+	public void setSensorTypeId( String sensorTypeId ) {
+		properties.setProperty( SENSOR_TYPE_ID, sensorTypeId );
+	}
 
-		String user = properties.getProperty(IOT_USER);
-		user = console.awaitNextLine(user, "Username (e.g. 'root'): ");
-		properties.setProperty(IOT_USER, user);
+	public void setMeasureCapabilityId( String capabilityId ) {
+		properties.setProperty( MEASURE_CAPABILITY_ID, capabilityId );
+	}
 
-		String gatewayType = properties.getProperty(GATEWAY_PROTOCOL_ID);
-		gatewayType = console.awaitNextLine(gatewayType, "Gateway Protocol ID ('rest' or 'mqtt'): ");
-		properties.setProperty(GATEWAY_PROTOCOL_ID, GatewayProtocol.fromValue(gatewayType).getValue());
+	public void setMeasureCapabilityAltId( String capabilityAltId ) {
+		properties.setProperty( MEASURE_CAPABILITY_ALT_ID, capabilityAltId );
+	}
 
-		//Now OPTIONAL (indicates intention to create new Device)
-		String deviceId = properties.getProperty(DEVICE_ID);
-		if ((deviceId == null) || (deviceId.equals("")))
-		{
-			deviceId = console.nextLine("Device ID (e.g. '32' or leave empty): ");
-			properties.setProperty(DEVICE_ID, deviceId);
-		}
+	public void setCommandCapabilityId( String capabilityId ) {
+		properties.setProperty( COMMAND_CAPABILITY_ID, capabilityId );
+	}
 
-		//Now OPTIONAL (indicates intention to create new Sensor/Sensor Type)
-		String sensorId = properties.getProperty(SENSOR_ID);
-		if (sensorId == null || (sensorId.equals("")))
-		{
-			sensorId = console.nextLine("Sensor ID (e.g. '32' or leave empty): ");
-			properties.setProperty(SENSOR_ID, sensorId);
-		}
+	public void seCommandCapabilityAltId( String capabilityAltId ) {
+		properties.setProperty( COMMAND_CAPABILITY_ALT_ID, capabilityAltId );
+	}
 
-		String proxyHost = properties.getProperty(PROXY_HOST);
-		if (proxyHost == null) {
-			proxyHost = console.nextLine("Proxy Host (e.g. 'proxy' or leave empty): ");
-			properties.setProperty(PROXY_HOST, proxyHost);
-		}
-
-		String proxyPort = properties.getProperty(PROXY_PORT);
-		if (proxyPort == null) {
-			proxyPort = console.nextLine("Proxy Port (e.g. '8080' or leave empty): ");
-			properties.setProperty(PROXY_PORT, proxyPort);
-		}
-
-		String password = properties.getProperty(IOT_PASSWORD);
-		if (password == null) {
-			password = console.nextPassword("Password for your user: ");
-			properties.setProperty(IOT_PASSWORD, password);
-		}
-
-		console.close();
-	};
+	public void setKeystoreSecret( String secret ) {
+		properties.setProperty( KEYSTORE_SECRET, secret );
+	}
 
 	
 	/**
-	 * Prints out the resulting configuration properties to the console. Skips user password and properties having empty
-	 * values.
+	 * @param measureCapability
+	 * @param measureCapabilityProperties
+	 * @param device
+	 * @param sensor
+	 * @param keystoreSecret
 	 */
-	private void printProperties() {
-		Console.printNewLine();
-		Console.printText("Properties:");
-		for (Object key : properties.keySet()) {
-			//if (IOT_PASSWORD.equals(key) || properties.get(key).toString().trim().isEmpty()) {
-			//	continue;
-			//}
-			Console.printProperty(key, properties.get(key));
-		}
-		Console.printNewLine();
+	public void writeDeviceProperties( Device device, Sensor sensor, Capability measureCapability, String keystoreSecret) {
+		//Grab the Property Values directly from their respective Objects
+		String deviceId = device.getId();				//Very useful to look up the Device by its unique ID
+		String deviceAltId = device.getAlternateId();	//Alt ID is necessary to send messages via MQTT Gateway
+		String sensorId = sensor.getId();				//Very useful to look up the Sensor by its unique ID
+		String sensorAltId = sensor.getAlternateId();	//Alt ID is necessary to send messages via MQTT Gateway
+		String capabilityAltId = measureCapability.getAlternateId();	//Alt ID is necessary to send messages via MQTT Gateway
+
+		//Set to Properties (in memory) first
+		setDeviceId( deviceId );
+		setDeviceAltId( deviceAltId );
+		setSensorId( sensorId );
+		setSensorAltId( sensorAltId );
+		setMeasureCapabilityAltId( capabilityAltId );
+		setKeystoreSecret( keystoreSecret );
+		setMeasureCapabilityProperties(measureCapability);
+		
+		//now commit all Properties to disk
+		super.writeProperties();
 	}
 
-	
-	private void setProxy() {
-		String proxyHost = properties.getProperty(PROXY_HOST);
-		String proxyPort = properties.getProperty(PROXY_PORT);
+	/**
+	 * Serializes the array of Properties attached to a Capability into a single string
+	 * @param measureCapability
+	 */
+	public void setMeasureCapabilityProperties(Capability measureCapability) {
+		Property[] capabilityProperties = measureCapability.getProperties();
+		Gson gson = new Gson();
+		String capabilityProperties_Json = gson.toJson(capabilityProperties);
 
-		ProxySelector.setProxy(proxyHost, proxyPort);
+		setProperty( MEASURE_CAPABILITY_PROPERTIES, capabilityProperties_Json );
 	}
 
-	
-	public void setProperty( String key, String value ) {
-		properties.put( key, value );
-	}
-	
-
-	public String getStringProperty( String key ) {
-		return properties.getProperty( key );
-	}
-
-	//Persist Properties to (NEW) file
-	//TODO overwrite existing props file when I'm ready
-	public void writeProperties() {
-		String propertiesFile = System.getProperty("user.dir") + "\\file.properties";
-		try(OutputStream propertiesFileWriter = new FileOutputStream(propertiesFile)){
-			properties.store(propertiesFileWriter, "save to properties file");
-		}catch(IOException ioe){
-			ioe.printStackTrace();
-		}
-
-	}
 	
 }

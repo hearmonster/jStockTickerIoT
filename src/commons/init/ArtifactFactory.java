@@ -1,5 +1,7 @@
 package commons.init;
 
+import java.text.DecimalFormat;
+
 import StockTickerIOT.StockTickerArtifactFactory;
 import commons.model.Capability;
 import commons.model.Device;
@@ -45,8 +47,9 @@ public class ArtifactFactory extends StockTickerArtifactFactory {
 	}
 
 	//DEVICE
-	public static String getDeviceName() {
-		return StockTickerArtifactFactory.getStockMarketDeviceName();
+	public static String getDeviceName( int deviceInstanceNo ) {
+		String baseName = StockTickerArtifactFactory.getStockMarketDeviceName();
+		return baseName + addSuffix( deviceInstanceNo );
 	}
 
 	public static Device buildDevice( Gateway gateway ) {
@@ -54,12 +57,21 @@ public class ArtifactFactory extends StockTickerArtifactFactory {
 	}
 
 	//SENSOR
-	public static String getSensorName() {
-		return StockTickerArtifactFactory.getStockMarketSensorName();
+	public static String getSensorName( int deviceInstanceNo ) {
+		String baseName = StockTickerArtifactFactory.getStockMarketSensorName();
+		return baseName + addSuffix( deviceInstanceNo );
 	}
 
 	public static Sensor buildSensor( Device device, SensorType sensorType ) {
 		return StockTickerArtifactFactory.buildStockMarketSensor( device, sensorType );
 	}
 
+	//General
+	
+	//needs to be 'protected' because: called by subclass 'CreateArtifacts' directly
+	protected static String addSuffix( int deviceInstanceNo ) {
+		String suffix = new DecimalFormat("00").format( deviceInstanceNo ); 
+		return "_" + suffix;
+		
+	}
 }

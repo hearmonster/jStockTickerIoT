@@ -1,57 +1,35 @@
 package commons.init;
 
 import java.io.IOException;
-
+import java.security.PrivateKey;
 import commons.SampleException;
 import commons.model.Capability;
 import commons.model.Device;
 import commons.model.Gateway;
-import commons.model.GatewayProtocol;
 import commons.model.Sensor;
 import commons.model.SensorType;
 import commons.utils.Console;
 
+
 public class CreateArtifacts extends ArtifactFactory {
 	//'ArtifactFactory' in turn extends the '<Device-specific>ArtifactFactory' class
-	protected DeviceProperties properties;
+	protected DeviceProperties deviceProperties;
 	protected CoreServiceX coreService;
+	int deviceCount;
 
-	public CreateArtifacts() throws SampleException {
+	public CreateArtifacts( CoreServiceX coreService, int deviceCount, Gateway gateway ) throws SampleException {
 
-		//read the device.properties Properties file
-		properties = new DeviceProperties();
-
-	//Starting 'AbstractCoreServiceSample' class...
-		String host = 		properties.getStringProperty( properties.IOT_HOST);
-		String instance = 	properties.getStringProperty( properties.INSTANCE_ID);
-		String tenant = 	properties.getStringProperty( properties.TENANT_ID);
-		String user = 		properties.getStringProperty( properties.IOT_USER);
-		String password = 	properties.getStringProperty( properties.IOT_PASSWORD);
-
-		coreService = new CoreServiceX(host, instance, tenant, user, password);
-
-		//TODO Do I need this?!
-		//(import)>>  		import java.util.Comparator;
-		//(Class Field)>>  	private Comparator<SensorTypeCapability> sensorTypeCapabilityComparator;
-		//sensorTypeCapabilityComparator = Comparator.comparing(SensorTypeCapability::getId);
-
-	//Now starting 'SampleApp'...
-		String deviceId = properties.getStringProperty( properties.DEVICE_ID);
-		String sensorId = properties.getStringProperty( properties.SENSOR_ID);
-		String GwyProtId = properties.getStringProperty( properties.GATEWAY_PROTOCOL_ID);
-		GatewayProtocol gatewayProtocol = GatewayProtocol.fromValue( GwyProtId );
-
+		// number of devices to create
+		this.deviceCount = deviceCount;
+		this.coreService = coreService;
+		
 		try {
-			Console.printSeparator();
-			Console.printText( String.format( "Searching for gateway of Protocol Type: %1$s ...", gatewayProtocol ));
-
-			Gateway gateway = coreService.getOnlineCloudGateway(gatewayProtocol);
-
 			Console.printSeparator();
 			Console.printText( "Searching for Measure Capability...");
 
 			Capability measureCapability = coreService.getOrAddMeasureCapability();
 
+			
 			Console.printSeparator();
 			Console.printText( "Searching for Command Capability...");
 			
@@ -62,20 +40,83 @@ public class CreateArtifacts extends ArtifactFactory {
 			
 			SensorType sensortype = coreService.getOrAddSensorType( measureCapability, commandCapability);
 
-			Console.printSeparator();
-			Console.printText( "Searching for Device...");
-			
-			Device device = coreService.getOrAddDevice( gateway );
-			if ( device != null )
-				properties.setProperty( properties.DEVICE_ID, device.getId() );
+			int deviceInstanceNo = 0;
+			while ( deviceInstanceNo < deviceCount ) {
+				Device device = null;
+				Sensor sensor = null;
+				
+				deviceInstanceNo ++;
+				
+				Console.printSeparator();
+				Console.printText( String.format( ">>>>>>>>> Configuring Device # %1$s... <<<<<<<<<", deviceInstanceNo ) );
+				
+				//read the RESPECTIVE 'device_XX.properties' Properties file
+				String suffix = addSuffix( deviceInstanceNo );
+				String devicePropertiesFile = String.format( "device%1$s.properties", suffix );
+				deviceProperties  = new DeviceProperties( devicePropertiesFile );
 
+				// Look for a Device ID >> If you find one, look up the device BY *ID*
+				String deviceId = deviceProperties.getDeviceId();
+				if ( deviceId != null )
+					device = coreService.getDeviceById( deviceId, gateway );
+
+				// If the device is still null, then we were unable to find it by ID, then fall back to below...
+				if ( device == null ) {
+					device = coreService.getOrAddDevice( gateway, deviceInstanceNo );
+				}
+
+				// If the device is *still null*, then we've really hit a problem...
+				if ( device == null ) {
+					Console.printError( "Unable to neither find nor create the device!" );
+					throw new SampleException();
+				}
+
+				Console.printNewLine();
+				Console.printText( String.format("IoT Core <Device ID>: %1$s", device.getId() ) );
+
+				Console.printSeparator();
+				Console.printText( "Searching for Device's keystore..." );
+
+				// Test open the Device's keystore
+				String deviceP12KeystoreFile = String.format( "device%1$s.pkcs12", suffix );
+				String keystoreSecret = deviceProperties.getKeystoreSecret();
+				PrivateKey pk = SecurityUtilX.openPkcs12Truststore( deviceP12KeystoreFile, keystoreSecret );
+				if ( pk == null )
+					// Create the Device's Keystore
+					keystoreSecret = SecurityUtilX.downloadPkcs12Truststore( coreService, device, deviceP12KeystoreFile);
+				
+				
+				Console.printSeparator();
+				Console.printText( "Searching for Sensor (to add to my Device)..." );
+				
+				// Look for a Sensor ID >> If you find one, look up the sensor BY *ID*
+				String sensorId = deviceProperties.getSensorId();
+				if ( sensorId != null ) {
+					sensor = coreService.getSensorById( sensorId );
+				}
+						
+				// If you can't find it by ID, then fall back to below...
+				if ( sensor == null ) {
+					sensor = coreService.getOrAddSensor( device, sensortype, deviceInstanceNo );
+				}
+
+				// If the sensor is *still null*, then we've really hit a problem...
+				if ( sensor == null ) {
+					Console.printError( "Unable to neither find nor create the sensor!" );
+					throw new SampleException();
+				}
+
+				Console.printNewLine();
+				Console.printText( String.format("IoT Core <Sensor ID>: %1$s", sensor.getId() ) );
+
+				//Persist all the DeviceID, SensorID, and Keystore Secret properties for easy look up, next time
+				//(BTW Keystore File Name == '<DeviceName>.pkcs12')
+				deviceProperties.writeDeviceProperties( device, sensor, measureCapability, keystoreSecret);
+
+			} //end while
 			Console.printSeparator();
-			Console.printText( "Searching for Sensor (to add to my Device)...");
-			
-			Sensor sensor = coreService.getOrAddSensor( device, sensortype );
-			if ( sensor != null )
-				properties.setProperty( properties.SENSOR_ID, sensor.getId() );
-			
+			Console.printText( "Created/Validated all Devices." );
+
 	//Finishing with catch block from 'SampleApp'...
 		//import java.security.GeneralSecurityException;
 
@@ -83,10 +124,9 @@ public class CreateArtifacts extends ArtifactFactory {
 			throw new SampleException(e.getMessage());
 		}
 
-		
-		properties.setProperty( "Krisha", "work" );
-		properties.writeProperties();
 	}
+
 
 	
 }
+

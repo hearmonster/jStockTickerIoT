@@ -234,12 +234,12 @@ public class CoreServiceX extends CoreService {
 
 
 
-	public Device getOrAddDevice( Gateway gateway ) throws IOException {
+	public Device getOrAddDevice( Gateway gateway, int deviceInstanceNo ) throws IOException {
 		//Ensure Device exists...
 		Device device = null;	//return value
 		
 		//Look up the name from the '<Device-specific>ArtifactFactory'
-		String deviceName = ArtifactFactory.getDeviceName();
+		String deviceName = ArtifactFactory.getDeviceName( deviceInstanceNo );
 
 		//Now perform a search of IoT Core to see whether it's already been created up there
 		device = getDeviceByName( deviceName, gateway.getId() );
@@ -262,12 +262,12 @@ public class CoreServiceX extends CoreService {
 	}
 
 
-	public Sensor getOrAddSensor(Device device, SensorType sensortype) throws IOException {
+	public Sensor getOrAddSensor( Device device, SensorType sensortype, int deviceInstanceNo ) throws IOException {
 		//Ensure the Sensor exists...
 		Sensor sensor = null;	//return value
 		
 		//Look up the name from the '<Device-specific>ArtifactFactory'
-		String sensorName = ArtifactFactory.getSensorName();
+		String sensorName = ArtifactFactory.getSensorName( deviceInstanceNo );
 
 		//Now perform a search of IoT Core to see whether it's already been created up there
 		sensor = getSensorByName( sensorName );
@@ -289,7 +289,45 @@ public class CoreServiceX extends CoreService {
 		return sensor;
 	}
 
+
+	//Overrides 'SecurityUtil.getAuthentication' with my extended 'AuthenticationX' class (extended with a 'p12' field)
+	public AuthenticationX getAuthenticationX( Device device )
+	throws IOException {
+		String destination = String.format("%1$s/devices/%2$s/authentications/clientCertificate/p12", baseUri,
+			device.getId());
+
+		try {
+			httpClient.connect(destination);
+			return httpClient.doGet(AuthenticationX.class);
+		} finally {
+			httpClient.disconnect();
+		}
+	}
+
+
+	//WRAPPERS
 	
+	// 'renaming' the parent's 'getDevice()' to be consistent with my naming approach (i.e. 'getDeviceByName()', 'getDeviceById()' etc.)
+	public Device getDeviceById(String deviceId, Gateway gateway) throws IOException {
+		return getDevice( deviceId, gateway);
+	}
+	
+	//Not so much a wrapper, but an addition ('CoreService' doesn't have any 'getSensor()' at all)
+	public Sensor getSensorById( String sensorId )
+	throws IOException {
+		String destination = String.format("%1$s/sensors/%2$s", baseUri, sensorId );
+
+		try {
+			httpClient.connect(destination);
+			return httpClient.doGet(Sensor.class);
+		} finally {
+			httpClient.disconnect();
+		}
+	}
+
+	
+
+
 	
 	
 }
