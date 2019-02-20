@@ -217,13 +217,13 @@ public abstract class StockTickerArtifactFactory {
 	
 	//Create random Symbol (random 4-char string)
 	//TODO change random string to one of a list of valid/existing Symbols
-	private static String buildSymbol() {
+	private static String buildDemoSymbol() {
 		return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 4);
 	}
 	
 
 	//Create random Price (float)
-	private static float buildPrice() {
+	private static float buildDemoPrice() {
 		float min = -100.0f;
 		float max = 100.0f;
 
@@ -234,7 +234,7 @@ public abstract class StockTickerArtifactFactory {
 
 
 	//Create random Quantity (integer)
-	private static int buildQuantity() {
+	private static int buildDemoQuantity() {
 	int min = 0;
 	int max = 1000;
 
@@ -243,7 +243,7 @@ public abstract class StockTickerArtifactFactory {
 
 	
 	//Create random Instruction (string: BUY, SELL)
-	private static String buildInstruction() {
+	private static String buildDemoInstruction() {
 		boolean b = new Random().nextBoolean();
 		String instruction = "";
 		
@@ -266,28 +266,28 @@ public abstract class StockTickerArtifactFactory {
 	//--------------------------------------------------------------------------------------------
 	// this is called while sending events - the "buildXXX" methods create random values
 	//This creates MEASURES
-	public static Measure buildTickerMeasure(Sensor sensor, Capability capability) {
+	public static Measure buildDemoTickerMeasure(Sensor sensor, Capability capability) {
 		Measure measure = new Measure();
 
 		measure.setCapabilityAlternateId(capability.getAlternateId());
 		measure.setSensorAlternateId(sensor.getAlternateId());
 		measure.setMeasures(
-			new Object[][] { { buildSymbol(), buildPrice(), buildQuantity() } });
+			new Object[][] { { buildDemoSymbol(), buildDemoPrice(), buildDemoQuantity() } });
 
 		return measure;
 	}
 
 	//This creates COMMANDS
-	public static Command buildInstructionCommand(Sensor sensor, Capability capability) {
+	public static Command buildDemoInstructionCommand(Sensor sensor, Capability capability) {
 		Command command = new Command();
 
 		command.setCapabilityId(capability.getId());
 		command.setSensorId(sensor.getId());
 
 		Map<String, Object> properties = new LinkedHashMap<>();
-		properties.put(SYMBOL_PROPERTY_NAME, buildSymbol());
-		properties.put(QUANTITY_PROPERTY_NAME, buildQuantity());
-		properties.put(BUYSELL_PROPERTY_NAME, buildInstruction());
+		properties.put(SYMBOL_PROPERTY_NAME, buildDemoSymbol());
+		properties.put(QUANTITY_PROPERTY_NAME, buildDemoQuantity());
+		properties.put(BUYSELL_PROPERTY_NAME, buildDemoInstruction());
 
 		command.setProperties(properties);
 

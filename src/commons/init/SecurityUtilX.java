@@ -26,6 +26,11 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.X509TrustManager;
+
 import commons.model.Device;
 import commons.utils.Console;
 import commons.utils.Constants;
@@ -76,21 +81,22 @@ public class SecurityUtilX extends SecurityUtil {
 
 	//5.
 	//Establishes connection to the IoT Core API - using:   KeyManager[] and TrustManager[]
-/*
-	private static SSLSocketFactory getSSLSocketFactory(KeyManager[] keyManagers,
-		TrustManager[] trustManagers)
+//MY VERSION - requires no inputs
+	public static SSLSocketFactory getSSLSocketFactory( String suffix, String keystoreSecret )
 	throws GeneralSecurityException, IOException {
+
+		KeyManager[] keyManagers = getKeyManagers( suffix, keystoreSecret );
+		TrustManager[] trustManagers = getTrustManagers();
 
 		SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
 		sslContext.init(keyManagers, trustManagers, new java.security.SecureRandom());
 
 		return sslContext.getSocketFactory();
 	}
-*/
+
 
 	//2.
-	private static KeyManager[] getKeyManagers(Device device, String pem,
-		String encryptedPrivateKey, String secret)
+	private static KeyManager[] getKeyManagers(Device device, String pem, String encryptedPrivateKey, String secret)
 	throws GeneralSecurityException, IOException {
 		//4.
 		PrivateKey privateKey = decryptPrivateKey(encryptedPrivateKey, secret);
@@ -131,6 +137,7 @@ public class SecurityUtilX extends SecurityUtil {
 		try {
 			keyStore = KeyStore.getInstance("PKCS12");
 			keyStore.load(null, secret.toCharArray());
+			/*
 			try (FileOutputStream p12KeyStoreStream = new FileOutputStream(p12KeyStore)) {
 				keyStore.store(p12KeyStoreStream, SSL_KEYSTORE_SECRET.toCharArray());
 
@@ -149,8 +156,8 @@ public class SecurityUtilX extends SecurityUtil {
 		}
 
 		try {
-			KeyManagerFactory keyManagerFactory = KeyManagerFactory
-				.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		*/
+			KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
 			keyManagerFactory.init(keyStore, SSL_KEYSTORE_SECRET.toCharArray());
 
 			return keyManagerFactory.getKeyManagers();
@@ -161,6 +168,23 @@ public class SecurityUtilX extends SecurityUtil {
 		}
 	}
 
+	
+	//MY VERSION
+	private static KeyManager[] getKeyManagers( String suffix, String keystoreSecret )    //Device device, String pem, String encryptedPrivateKey, String secret)
+			throws GeneralSecurityException, IOException {
+
+		// Call before>>>  String keystoreSecret = deviceProperties.getKeystoreSecret();
+		KeyStore keyStore = SecurityUtilX.openPkcs12Keystore( suffix, keystoreSecret );
+		
+		KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+		keyManagerFactory.init( keyStore, keystoreSecret.toCharArray());
+	
+		return keyManagerFactory.getKeyManagers();
+	}
+
+
+	
+	
 	//4.
 	// Required, because it's marked as 'private' in the superclass
 	private static PrivateKey decryptPrivateKey(String encryptedPrivateKey, String secret)
@@ -206,7 +230,7 @@ public class SecurityUtilX extends SecurityUtil {
 	 * options.setSSLProperties(properties);
 	 */
 	//3.
-/*
+//copy - since superclass is private
 	private static TrustManager[] getTrustManagers() {
 		return new TrustManager[] { new X509TrustManager() {
 
@@ -229,35 +253,43 @@ public class SecurityUtilX extends SecurityUtil {
 
 		} };
 	}
-*/
+
 	
-	public static PrivateKey openPkcs12Truststore( String deviceP12KeystoreFile, String keystoreSecret )
+	public static KeyStore openPkcs12Keystore( String suffix, String keystoreSecret )
 			throws IOException, FileNotFoundException {
-
+		KeyStore keystore = null;
 		try {
-            KeyStore keystore = KeyStore.getInstance( "PKCS12" );
-            char[] keystoreSecret_char = keystoreSecret.toCharArray();
-    		File jar = new File(AbstractPropertiesHelper.class.getProtectionDomain().getCodeSource().getLocation().getPath());
-    		String path = jar.getParentFile().getAbsolutePath().concat(System.getProperty( "file.separator" )).concat( deviceP12KeystoreFile );
-    		Console.printText( String.format( "Looking for properties file here: %1$s", path ) );
-
-            InputStream readStream = new FileInputStream( path );
-
-            keystore.load(
-            	readStream,  //Assumes on classpath:  this.getClass().getClassLoader().getResourceAsStream("the.p12"),
-            	keystoreSecret_char );
-
-            //Downloaded PKCS#12 files from IoT Core appear to store their Private Key with an alias of "1"
-            PrivateKey key = (PrivateKey) keystore.getKey("1", keystoreSecret_char );
-            if ( key != null ) {
-            	Console.printText( "Private Key successfully retrieved from keystore: " + deviceP12KeystoreFile);
-            }
+			String deviceP12KeystoreFilename = String.format( "device%1$s.pkcs12", suffix );
             
-            return key;
+			File jar = new File(AbstractPropertiesHelper.class.getProtectionDomain().getCodeSource().getLocation().getPath());
+    		String path = jar.getParentFile().getAbsolutePath().concat(System.getProperty( "file.separator" )).concat( deviceP12KeystoreFilename );
+    		Console.printText( String.format( "Looking for Keystore file here: %1$s", path ) );
+
+			File deviceP12KeystoreFile = new File( deviceP12KeystoreFilename );
+			if ( deviceP12KeystoreFile.exists() ) {
+				//Attempt to open Keystore
+//TODO				ks = SecurityUtilX.openPkcs12Truststore( deviceP12KeystoreFilename, keystoreSecret );
+				keystore = KeyStore.getInstance( "PKCS12" );
+	            char[] keystoreSecret_char = keystoreSecret.toCharArray();
+
+	            InputStream readStream = new FileInputStream( path );
+
+	            keystore.load(
+	            	readStream,  //Assumes on classpath:  this.getClass().getClassLoader().getResourceAsStream("the.p12"),
+	            	keystoreSecret_char );
+
+	            //Downloaded PKCS#12 files from IoT Core appear to store their Private Key with an alias of "1"
+	            PrivateKey key = (PrivateKey) keystore.getKey("1", keystoreSecret_char );
+	            if ( key != null ) {
+	            	Console.printText( "Private Key successfully retrieved from keystore: " + deviceP12KeystoreFile);
+	            }
+			}
+
         } catch (Exception e) {
             Console.printError( "Exception while trying to obtain private key. \tFurther details: " + e );
             return null;
-        } 
+        }
+		return keystore; 
 	}
 
 		
@@ -269,12 +301,14 @@ public class SecurityUtilX extends SecurityUtil {
 	 * @throws IOException
 	 * @throws FileNotFoundException
 	 */
-	public static String downloadPkcs12Truststore(CoreServiceX coreService, Device device, String deviceP12KeystoreFile )
+	public static String downloadPkcs12Keystore(CoreServiceX coreService, Device device, String suffix )
 			throws IOException, FileNotFoundException {
 		//Basic cleanup
-        File f = new File( deviceP12KeystoreFile );
-        if ( f.exists() )
-        	f.delete();
+		String deviceP12KeystoreFilename = String.format( "device%1$s.pkcs12", suffix );
+		File deviceP12KeystoreFile = new File( deviceP12KeystoreFilename );
+        if ( deviceP12KeystoreFile.exists() ) {
+        	deviceP12KeystoreFile.delete();
+        }
         
         //Download PKCS#12 via API
 		AuthenticationX authP12 = coreService.getAuthenticationX( device );

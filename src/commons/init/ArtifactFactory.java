@@ -8,6 +8,7 @@ import commons.model.Device;
 import commons.model.Gateway;
 import commons.model.Sensor;
 import commons.model.SensorType;
+import commons.model.gateway.Measure;
 
 public class ArtifactFactory extends StockTickerArtifactFactory {
 //Provides generically-named 'BuildXXX' methods for the calling class (CreateArtifacts) to call
@@ -20,13 +21,23 @@ public class ArtifactFactory extends StockTickerArtifactFactory {
 	//**********************************************************
 	//CAPABILITIES
 		//MEASURE
-		public static String getMeasureCapabilityName() {
-			return StockTickerArtifactFactory.getStockMarketMeasureCapabilityName();
-		}
-	
-		public static Capability buildMeasureCapability() {
-			return StockTickerArtifactFactory.buildStockMarketMeasureCapability();
-		}
+			//CONSTRUCTION
+			public static String getMeasureCapabilityName() {
+				return StockTickerArtifactFactory.getStockMarketMeasureCapabilityName();
+			}
+		
+			public static Capability buildMeasureCapability() {
+				return StockTickerArtifactFactory.buildStockMarketMeasureCapability();
+			}
+
+			//DEMO RUN
+			public static Capability buildDemoMeasureCapability() {
+				return StockTickerArtifactFactory.buildStockMarketMeasureCapability();
+			}
+			
+			public static Measure buildDemoMeasure(Sensor sensor, Capability capability) {
+				return StockTickerArtifactFactory.buildDemoTickerMeasure( sensor, capability );
+			}
 
 		//COMMAND
 		public static String getCommandCapabilityName() {
@@ -72,6 +83,5 @@ public class ArtifactFactory extends StockTickerArtifactFactory {
 	protected static String addSuffix( int deviceInstanceNo ) {
 		String suffix = new DecimalFormat("00").format( deviceInstanceNo ); 
 		return "_" + suffix;
-		
 	}
 }

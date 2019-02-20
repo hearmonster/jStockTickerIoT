@@ -1,6 +1,8 @@
 package commons.init;
 
+import java.io.File;
 import java.io.IOException;
+import java.security.KeyStore;
 import java.security.PrivateKey;
 import commons.SampleException;
 import commons.model.Capability;
@@ -52,8 +54,8 @@ public class CreateArtifacts extends ArtifactFactory {
 				
 				//read the RESPECTIVE 'device_XX.properties' Properties file
 				String suffix = addSuffix( deviceInstanceNo );
-				String devicePropertiesFile = String.format( "device%1$s.properties", suffix );
-				deviceProperties  = new DeviceProperties( devicePropertiesFile );
+				String devicePropertiesFilename = String.format( "device%1$s.properties", suffix );
+				deviceProperties  = new DeviceProperties( devicePropertiesFilename );
 
 				// Look for a Device ID >> If you find one, look up the device BY *ID*
 				String deviceId = deviceProperties.getDeviceId();
@@ -78,13 +80,15 @@ public class CreateArtifacts extends ArtifactFactory {
 				Console.printText( "Searching for Device's keystore..." );
 
 				// Test open the Device's keystore
-				String deviceP12KeystoreFile = String.format( "device%1$s.pkcs12", suffix );
-				String keystoreSecret = deviceProperties.getKeystoreSecret();
-				PrivateKey pk = SecurityUtilX.openPkcs12Truststore( deviceP12KeystoreFile, keystoreSecret );
-				if ( pk == null )
+				String keystoreSecret = deviceProperties.getKeystoreSecret(); 
+				//A successful open, will return the Keystore object
+				KeyStore ks = SecurityUtilX.openPkcs12Keystore( suffix, keystoreSecret );
+				///Otherwise...
+				if ( ks == null ) {
 					// Create the Device's Keystore
-					keystoreSecret = SecurityUtilX.downloadPkcs12Truststore( coreService, device, deviceP12KeystoreFile);
-				
+					// grab the downloaded secret, because you'll need this, to persist in the Device's Properties file later
+					keystoreSecret = SecurityUtilX.downloadPkcs12Keystore( coreService, device, suffix);
+				}
 				
 				Console.printSeparator();
 				Console.printText( "Searching for Sensor (to add to my Device)..." );
